@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.trs.mapper.VideoMapper">
+    <select id="selectVideoCount" resultType="java.lang.Integer">
+        SELECT COUNT(*)  FROM cmp_video_syn;
+    </select>
+    <select id="selectVideoPath" resultType="Video">
+        SELECT * FROM cmp_video_syn;
+    </select>
+
+    <select id="selectVideoCounts" resultType="java.lang.Integer">
+        SELECT COUNT(*)  FROM cmp_video;
+    </select>
+    <select id="selectVideoPaths" resultType="Video">
+        SELECT * FROM cmp_video;
+    </select>
+
+</mapper>

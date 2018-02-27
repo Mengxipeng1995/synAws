@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:tx="http://www.springframework.org/schema/tx" xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:task="http://www.springframework.org/schema/task"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+     http://www.springframework.org/schema/beans/spring-beans.xsd
+     http://www.springframework.org/schema/tx
+     http://www.springframework.org/schema/tx/spring-tx.xsd
+     http://www.springframework.org/schema/aop
+     http://www.springframework.org/schema/aop/spring-aop.xsd http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd http://www.springframework.org/schema/task http://www.springframework.org/schema/task/spring-task.xsd">
+
+    <context:annotation-config />
+
+
+    <!-- 加载数据库配置文件 -->
+    <context:property-placeholder location="classpath*:db.properties" />
+    <!--<context:component-scan base-package="com.trs"/>-->
+    <!-- 配置数据源 -->
+    <bean id="dataSource" class="com.alibaba.druid.pool.DruidDataSource" init-method="init" destroy-method="close">
+        <property name="driverClassName" value="${jdbc.driver}"/>
+        <property name="url" value="${jdbc.url}" />
+        <property name="username" value="${jdbc.username}" />
+        <property name="password" value="${jdbc.password}" />
+
+        <property name="filters" value="stat" />
+
+        <property name="maxActive" value="20" />
+        <property name="initialSize" value="1" />
+        <property name="maxWait" value="60000" />
+        <property name="minIdle" value="1" />
+
+        <property name="timeBetweenEvictionRunsMillis" value="60000" />
+        <property name="minEvictableIdleTimeMillis" value="300000" />
+
+        <property name="testWhileIdle" value="true" />
+        <property name="testOnBorrow" value="false" />
+        <property name="testOnReturn" value="false" />
+
+        <property name="poolPreparedStatements" value="true" />
+        <property name="maxOpenPreparedStatements" value="20" />
+    </bean>
+
+
+    <!-- 配置sqlSessionFactoryBean -->
+    <bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+        <property name="dataSource" ref="dataSource"/>
+        <property name="configLocation" value="classpath:sqlMapConfig.xml"/>
+    </bean>
+    <!-- 配置mapper扫描器 -->
+    <bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+        <property name="sqlSessionFactoryBeanName" value="sqlSessionFactory"/>
+        <property name="basePackage" value="com.trs.mapper"/>
+    </bean>
+    <!--配置通用mapper扫描器-->
+    <bean class="tk.mybatis.spring.mapper.MapperScannerConfigurer">
+        <property name="basePackage" value="com.trs.mapper"/>
+    </bean>
+
+    <bean id="synAws" class="com.trs.control.SynAwsControl"></bean>
+
+    <!--&lt;!&ndash;配置service扫描器&ndash;&gt;-->
+    <context:component-scan base-package="com.trs" />
+
+    <task:annotation-driven scheduler="myScheduler"/>
+
+    <task:scheduler id="myScheduler" pool-size="5"/>
+
+    <!--
+    一个cron表达式有至少6个（也可能7个）有空格分隔的时间元素。
+       按顺序依次为
+      1  秒（0~59）
+      2  分钟（0~59）
+      3 小时（0~23）
+      4  天（0~31）
+      5 月（0~11）
+      6  星期（1~7 1=SUN 或 SUN，MON，TUE，WED，THU，FRI，SAT）
+      7.年份（1970－2099）
+      -->
+
+    <task:scheduled-tasks>
+        <!--s3图片增量更新 res>>>>photo_syn表 -->
+        <!--<task:scheduled ref="synAws" method="synPhoto" cron="0 10 16 * * ? "/>-->
+        <!--&lt;!&ndash;s3视频增量更新 res>>>>video_syn表 &ndash;&gt;-->
+        <!--<task:scheduled ref="synAws" method="synVideo" cron="0 10 16 * * ? "/>-->
+        <!--s3图片全量更新 只执行一次需要换库为cmp_fb_formal photo表 -->
+        <!--<task:scheduled ref="synAws" method="synPhotos" cron="0 39 15 3 11 * "/>-->
+        <!--s3视频全量更新 只执行一次需要换库为cmp_fb_formal video表 -->
+        <task:scheduled ref="synAws" method="synVideos" cron="0 15 11 6 11 * "/>
+    </task:scheduled-tasks>
+
+
+
+    <!-- 事务管理器 -->
+    <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <!-- 数据源 -->
+        <property name="dataSource" ref="dataSource"/>
+    </bean>
+
+    <!-- 通知 -->
+    <tx:advice id="txAdvice" transaction-manager="transactionManager">
+        <tx:attributes>
+            <!-- 传播行为 -->
+            <tx:method name="save*" propagation="REQUIRED"/>
+            <tx:method name="insert*" propagation="REQUIRED"/>
+            <tx:method name="delete*" propagation="REQUIRED"/>
+            <tx:method name="update*" propagation="REQUIRED"/>
+            <tx:method name="find*" propagation="SUPPORTS" read-only="true"/>
+            <tx:method name="get*" propagation="SUPPORTS" read-only="true"/>
+        </tx:attributes>
+    </tx:advice>
+
+    <!-- 切面 -->
+    <aop:config>
+        <aop:advisor advice-ref="txAdvice" pointcut="execution(* com.trs.service.impl.*.*(..))"/>
+    </aop:config>
+
+</beans>
